@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CapRover Domain Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            900: '#0f0f1a',
+                            800: '#1a1a2e',
+                            700: '#252540',
+                            600: '#2d2d4a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .modal-overlay {
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-overlay .modal {
+            transition: transform 0.3s;
+        }
+        .modal-overlay.show .modal {
+            transform: scale(1);
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-dark-900 to-dark-800 min-h-screen text-gray-200">
+    <div class="max-w-6xl mx-auto px-4 py-6">
+        <!-- Header -->
+        <header class="text-center py-8 border-b border-gray-700 mb-8">
+            <div class="flex items-center justify-center gap-4 mb-2">
+                <!-- Logo -->
+                <img src="logo.svg" alt="CapRover Domain Manager Logo" width="56" height="56">
+                <h1 class="text-4xl font-bold text-[#1890ff]">CapRover Domain Manager</h1>
+            </div>
+            <p class="text-gray-500">Easily manage custom domains for your CapRover applications</p>
+        </header>
+
+        <!-- Alert -->
+        <div id="alert" class="hidden rounded-lg p-4 mb-6 border"></div>
+
+        <!-- Connection Card -->
+        <div class="bg-white/5 backdrop-blur rounded-xl p-6 mb-6 border border-white/10" id="connection-card">
+            <h2 class="text-xl font-semibold text-cyan-400 mb-6 flex items-center gap-2">
+                <span>🔗</span> Connect to CapRover
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-2" for="baseUrl">CapRover URL</label>
+                    <input type="text" id="baseUrl" placeholder="https://captain.example.com"
+                        class="w-full px-4 py-3 bg-black/30 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-cyan-400 transition">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-2" for="password">Password</label>
+                    <input type="password" id="password" placeholder="Your CapRover password"
+                        class="w-full px-4 py-3 bg-black/30 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-cyan-400 transition">
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <button onclick="connect()" 
+                    class="px-6 py-3 bg-gradient-to-r from-cyan-500 to-cyan-600 text-black font-semibold rounded-lg hover:shadow-lg hover:shadow-cyan-500/25 hover:-translate-y-0.5 transition-all">
+                    Connect
+                </button>
+                <div id="connection-status" class="hidden px-4 py-2 rounded-full text-sm flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full"></span>
+                    <span class="status-text">Disconnected</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Apps Card -->
+        <div class="bg-white/5 backdrop-blur rounded-xl p-6 border border-white/10 hidden" id="apps-card">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-xl font-semibold text-cyan-400 flex items-center gap-2">
+                    <span>📱</span> Applications
+                </h2>
+                <button onclick="loadApps()" 
+                    class="px-4 py-2 bg-gradient-to-r from-cyan-500 to-cyan-600 text-black font-medium text-sm rounded-lg hover:shadow-lg hover:shadow-cyan-500/25 transition-all">
+                    Refresh
+                </button>
+            </div>
+            <div id="apps-container">
+                <div class="text-center py-10 text-gray-500">
+                    <p>Connect to CapRover to see your applications</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal-overlay fixed inset-0 bg-black/80 flex justify-center items-center z-50 opacity-0 invisible" id="modal-overlay" onclick="closeModal(event)">
+        <div class="modal bg-dark-800 rounded-2xl w-11/12 max-w-2xl max-h-[90vh] overflow-hidden border border-white/10 transform scale-95" onclick="event.stopPropagation()">
+            <div class="px-6 py-5 border-b border-white/10 flex justify-between items-center">
+                <h3 class="text-xl font-semibold text-cyan-400 flex items-center gap-3">
+                    <span class="w-3 h-3 rounded-full" id="modal-status"></span>
+                    <span id="modal-app-name">App Name</span>
+                </h3>
+                <button onclick="closeModal()" class="text-gray-500 hover:text-white text-2xl leading-none transition">&times;</button>
+            </div>
+            <div class="p-6 overflow-y-auto max-h-[calc(90vh-80px)]" id="modal-body">
+                <!-- Content will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let authToken = '';
+        let baseUrl = '';
+        let rootDomain = '';
+        let appsData = [];
+
+        window.onload = function() {
+            const savedUrl = localStorage.getItem('caprover_url');
+            const savedToken = localStorage.getItem('caprover_token');
+            const savedRootDomain = localStorage.getItem('caprover_rootDomain');
+            
+            if (savedUrl) document.getElementById('baseUrl').value = savedUrl;
+            if (savedRootDomain) rootDomain = savedRootDomain;
+            
+            if (savedUrl && savedToken) {
+                baseUrl = savedUrl;
+                authToken = savedToken;
+                updateConnectionStatus(true);
+                loadSystemInfo().then(() => loadApps());
+            }
+        };
+
+        function showAlert(message, type) {
+            const alert = document.getElementById('alert');
+            alert.textContent = message;
+            alert.innerHTML = message.replace(/\n/g, '<br>');
+            alert.className = type === 'success' 
+                ? 'rounded-lg p-4 mb-6 border bg-green-500/20 border-green-500 text-green-300'
+                : 'rounded-lg p-4 mb-6 border bg-red-500/20 border-red-500 text-red-300 whitespace-pre-line';
+            setTimeout(() => alert.className = 'hidden', type === 'error' ? 10000 : 5000);
+        }
+
+        function updateConnectionStatus(connected) {
+            const status = document.getElementById('connection-status');
+            const appsCard = document.getElementById('apps-card');
+            status.classList.remove('hidden');
+            
+            if (connected) {
+                status.className = 'px-4 py-2 rounded-full text-sm flex items-center gap-2 bg-green-500/20 text-green-300';
+                status.querySelector('span:first-child').className = 'w-2 h-2 rounded-full bg-green-400';
+                status.querySelector('.status-text').textContent = 'Connected';
+                appsCard.classList.remove('hidden');
+            } else {
+                status.className = 'px-4 py-2 rounded-full text-sm flex items-center gap-2 bg-red-500/20 text-red-300';
+                status.querySelector('span:first-child').className = 'w-2 h-2 rounded-full bg-red-400';
+                status.querySelector('.status-text').textContent = 'Disconnected';
+                appsCard.classList.add('hidden');
+            }
+        }
+
+        async function connect() {
+            const urlInput = document.getElementById('baseUrl');
+            const passwordInput = document.getElementById('password');
+            baseUrl = urlInput.value.trim().replace(/\/$/, '');
+            const password = passwordInput.value;
+
+            if (!baseUrl || !password) {
+                showAlert('Please enter both URL and password', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ baseUrl, password })
+                });
+                const data = await response.json();
+
+                if (data.status === 100) {
+                    authToken = data.data.token;
+                    localStorage.setItem('caprover_url', baseUrl);
+                    localStorage.setItem('caprover_token', authToken);
+                    updateConnectionStatus(true);
+                    showAlert('Connected successfully!', 'success');
+                    await loadSystemInfo();
+                    loadApps();
+                } else {
+                    showAlert(data.description || 'Connection failed', 'error');
+                    updateConnectionStatus(false);
+                }
+            } catch (error) {
+                showAlert('Connection error: ' + error.message, 'error');
+                updateConnectionStatus(false);
+            }
+        }
+
+        async function loadSystemInfo() {
+            try {
+                const response = await fetch('/api/system/info', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ baseUrl, token: authToken })
+                });
+                const data = await response.json();
+                if (data.status === 100 && data.data) {
+                    rootDomain = data.data.rootDomain;
+                    localStorage.setItem('caprover_rootDomain', rootDomain);
+                }
+            } catch (error) {
+                console.error('Error loading system info:', error);
+            }
+        }
+
+        async function loadApps() {
+            const container = document.getElementById('apps-container');
+            container.innerHTML = '<div class="text-center py-10 text-gray-500"><div class="inline-block w-6 h-6 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin mr-2"></div>Loading applications...</div>';
+
+            try {
+                const response = await fetch('/api/apps', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ baseUrl, token: authToken })
+                });
+                const data = await response.json();
+
+                if (data.status === 100 && data.data && data.data.appDefinitions) {
+                    appsData = data.data.appDefinitions;
+                    renderApps(appsData);
+                } else {
+                    container.innerHTML = `<div class="text-center py-10 text-gray-500">Failed to load apps: ${data.description || 'Unknown error'}</div>`;
+                    if (data.status === 1106) {
+                        localStorage.removeItem('caprover_token');
+                        updateConnectionStatus(false);
+                    }
+                }
+            } catch (error) {
+                container.innerHTML = `<div class="text-center py-10 text-gray-500">Error: ${error.message}</div>`;
+            }
+        }
+
+        function renderApps(apps) {
+            const container = document.getElementById('apps-container');
+            if (apps.length === 0) {
+                container.innerHTML = '<div class="text-center py-10 text-gray-500">No applications found</div>';
+                return;
+            }
+
+            container.innerHTML = `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">${apps.map(app => {
+                const domains = app.customDomain || [];
+                const isRunning = app.instanceCount > 0;
+                const isWebApp = !app.notExposeAsWebApp;
+                const totalDomains = isWebApp ? domains.length + 1 : 0;
+                
+                return `
+                    <div class="bg-black/30 rounded-xl p-4 border border-white/10 hover:border-cyan-500/30 transition flex justify-between items-center">
+                        <div class="flex items-center gap-3">
+                            <div class="w-3 h-3 rounded-full ${isRunning ? 'bg-green-400' : 'bg-red-400'}"></div>
+                            <div>
+                                <h3 class="font-medium text-white">${app.appName}</h3>
+                                <div class="flex items-center gap-2 mt-1 text-xs">
+                                    ${isWebApp ? `
+                                        <span class="text-gray-400">🌐 ${totalDomains} domain${totalDomains !== 1 ? 's' : ''}</span>
+                                        <span class="px-2 py-0.5 rounded-full bg-green-500/20 text-green-300">Web</span>
+                                    ` : `
+                                        <span class="px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-300">Internal</span>
+                                    `}
+                                </div>
+                            </div>
+                        </div>
+                        ${isWebApp ? `
+                            <button onclick="openModal('${app.appName}')" 
+                                class="p-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition" title="Manage Domains">
+                                ⚙️
+                            </button>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('')}</div>`;
+        }
+
+        function isSubdomainOfRoot(domain) {
+            if (!rootDomain) return false;
+            // Check if domain ends with .rootDomain
+            return domain.toLowerCase().endsWith('.' + rootDomain.toLowerCase()) || 
+                   domain.toLowerCase() === rootDomain.toLowerCase();
+        }
+
+        function openModal(appName) {
+            const app = appsData.find(a => a.appName === appName);
+            if (!app) return;
+
+            const isRunning = app.instanceCount > 0;
+            const isWebApp = !app.notExposeAsWebApp;
+            const domains = app.customDomain || [];
+            const defaultDomain = rootDomain ? `${app.appName}.${rootDomain}` : null;
+            const hasDefaultSsl = app.hasDefaultSubDomainSsl;
+
+            document.getElementById('modal-app-name').textContent = appName;
+            document.getElementById('modal-status').className = `w-3 h-3 rounded-full ${isRunning ? 'bg-green-400' : 'bg-red-400'}`;
+
+            let bodyHtml = '';
+            if (!isWebApp) {
+                bodyHtml = `<div class="text-center py-8 text-gray-500">
+                    <p class="mb-2">⚠️ This app is not exposed as a web application.</p>
+                    <p>Domain management is disabled.</p>
+                </div>`;
+            } else {
+                bodyHtml = `
+                    ${defaultDomain ? `
+                    <div class="mb-6">
+                        <h4 class="text-xs uppercase tracking-wider text-gray-500 mb-3">CapRover Domain</h4>
+                        <div class="bg-cyan-500/10 border border-cyan-500/20 rounded-lg p-4">
+                            <div class="flex justify-between items-start flex-wrap gap-3">
+                                <div>
+                                    <a href="${hasDefaultSsl ? 'https' : 'http'}://${defaultDomain}" target="_blank" 
+                                        class="font-mono text-cyan-300 hover:underline">${defaultDomain}</a>
+                                    <div class="flex gap-2 mt-2">
+                                        <span class="text-xs px-2 py-0.5 rounded ${hasDefaultSsl ? 'bg-green-500/30 text-green-300' : 'bg-yellow-500/30 text-yellow-300'}">
+                                            ${hasDefaultSsl ? '🔒 SSL' : '⚠️ No SSL'}
+                                        </span>
+                                        <span class="text-xs px-2 py-0.5 rounded bg-cyan-500/30 text-cyan-300">Default</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    ` : ''}
+                    
+                    <div class="mb-6">
+                        <h4 class="text-xs uppercase tracking-wider text-gray-500 mb-3">Custom Domains</h4>
+                        ${domains.length === 0 ? '<p class="text-gray-600 italic">No custom domains configured</p>' : ''}
+                        <div class="space-y-2">
+                            ${domains.map(d => `
+                                <div class="bg-white/5 rounded-lg p-4 flex justify-between items-start flex-wrap gap-3">
+                                    <div>
+                                        <a href="${d.hasSsl ? 'https' : 'http'}://${d.publicDomain}" target="_blank" 
+                                            class="font-mono text-cyan-300 hover:underline">${d.publicDomain}</a>
+                                        <div class="flex gap-2 mt-2">
+                                            <span class="text-xs px-2 py-0.5 rounded ${d.hasSsl ? 'bg-green-500/30 text-green-300' : 'bg-yellow-500/30 text-yellow-300'}">
+                                                ${d.hasSsl ? '🔒 SSL' : '⚠️ No SSL'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="flex gap-2">
+                                        ${!d.hasSsl ? `
+                                            <button onclick="enableSSL('${appName}', '${d.publicDomain}')" 
+                                                class="px-3 py-1.5 text-sm bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:shadow-lg transition">
+                                                Enable SSL
+                                            </button>
+                                        ` : ''}
+                                        <button onclick="removeDomain('${appName}', '${d.publicDomain}')" 
+                                            class="px-3 py-1.5 text-sm bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg hover:shadow-lg transition">
+                                            Remove
+                                        </button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 class="text-xs uppercase tracking-wider text-gray-500 mb-3">Add New Domain</h4>
+                        
+                        <!-- DNS Instructions -->
+                        <div class="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mb-4">
+                            <p class="text-xs text-blue-300 font-semibold mb-2">📋 Before adding a domain:</p>
+                            <ol class="text-xs text-blue-200/80 space-y-1 list-decimal list-inside">
+                                <li>Go to your domain's DNS settings</li>
+                                <li>Add an <strong>A record</strong> pointing to your CapRover server IP</li>
+                                <li>Or add a <strong>CNAME</strong> pointing to your CapRover domain</li>
+                                <li>Wait for DNS propagation (usually 1-5 minutes)</li>
+                            </ol>
+                        </div>
+                        
+                        <div class="flex gap-3">
+                            <input type="text" placeholder="example.com or sub.example.com" id="new-domain-input"
+                                onkeypress="if(event.key === 'Enter') addDomain('${appName}')"
+                                class="flex-1 px-4 py-3 bg-black/30 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-cyan-400 transition">
+                            <button onclick="addDomain('${appName}')" 
+                                class="px-6 py-3 bg-gradient-to-r from-cyan-500 to-cyan-600 text-black font-semibold rounded-lg hover:shadow-lg hover:shadow-cyan-500/25 transition">
+                                Add
+                            </button>
+                        </div>
+                        <p class="text-xs text-gray-600 mt-2">
+                            Supports domains and subdomains (e.g., app.example.com, api.mysite.org)
+                        </p>
+                        ${rootDomain ? `
+                        <p class="text-xs text-yellow-500/80 mt-1">
+                            ⚠️ Note: Subdomains of <span class="font-mono">${rootDomain}</span> are automatically handled. Use external domains only.
+                        </p>
+                        ` : ''}
+                    </div>
+                `;
+            }
+
+            document.getElementById('modal-body').innerHTML = bodyHtml;
+            document.getElementById('modal-overlay').classList.add('show');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal(event) {
+            if (event && event.target !== event.currentTarget) return;
+            document.getElementById('modal-overlay').classList.remove('show');
+            document.body.style.overflow = '';
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeModal();
+        });
+
+        async function addDomain(appName) {
+            const input = document.getElementById('new-domain-input');
+            const domain = input.value.trim();
+
+            if (!domain) {
+                showAlert('Please enter a domain name', 'error');
+                return;
+            }
+
+            // Validate: prevent adding subdomains of root domain
+            if (isSubdomainOfRoot(domain)) {
+                showAlert(`Cannot add "${domain}" - subdomains of ${rootDomain} are automatically handled by CapRover. Please use an external domain instead.`, 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/domain/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ baseUrl, token: authToken, appName, domain })
+                });
+                const data = await response.json();
+
+                if (data.status === 100) {
+                    showAlert(`Domain ${domain} added successfully!`, 'success');
+                    input.value = '';
+                    await loadApps();
+                    openModal(appName);
+                } else {
+                    // Handle specific error codes with helpful messages
+                    let errorMsg = data.description || 'Failed to add domain';
+                    if (data.status === 1107) {
+                        errorMsg = `DNS Verification Failed for "${domain}". Please make sure:\n\n1. You have added an A record or CNAME pointing to your CapRover server IP\n2. DNS has propagated (may take a few minutes)\n\nTry again after configuring DNS.`;
+                    } else if (data.status === 1104) {
+                        errorMsg = `Domain "${domain}" is not allowed. Custom domains cannot be subdomains of your CapRover root domain.`;
+                    }
+                    showAlert(errorMsg, 'error');
+                }
+            } catch (error) {
+                showAlert('Error adding domain: ' + error.message, 'error');
+            }
+        }
+
+        async function removeDomain(appName, domain) {
+            if (!confirm(`Are you sure you want to remove ${domain}?`)) return;
+
+            try {
+                const response = await fetch('/api/domain/remove', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ baseUrl, token: authToken, appName, domain })
+                });
+                const data = await response.json();
+
+                if (data.status === 100) {
+                    showAlert(`Domain ${domain} removed successfully!`, 'success');
+                    await loadApps();
+                    openModal(appName);
+                } else {
+                    showAlert(data.description || 'Failed to remove domain', 'error');
+                }
+            } catch (error) {
+                showAlert('Error removing domain: ' + error.message, 'error');
+            }
+        }
+
+        async function enableSSL(appName, domain) {
+            if (!confirm(`Enable SSL for ${domain}? Make sure DNS is properly configured.`)) return;
+
+            try {
+                const response = await fetch('/api/domain/ssl', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ baseUrl, token: authToken, appName, domain })
+                });
+                const data = await response.json();
+
+                if (data.status === 100) {
+                    showAlert(`SSL enabled for ${domain}!`, 'success');
+                    await loadApps();
+                    openModal(appName);
+                } else {
+                    showAlert(data.description || 'Failed to enable SSL', 'error');
+                }
+            } catch (error) {
+                showAlert('Error enabling SSL: ' + error.message, 'error');
+            }
+        }
+    </script>
+</body>
+</html>

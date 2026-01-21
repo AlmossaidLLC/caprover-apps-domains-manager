@@ -1,0 +1,12 @@
+{
+  "name": "caprover-apps-domains-manager",
+  "version": "1.0.0",
+  "description": "Manage CapRover application domains",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

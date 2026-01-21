@@ -1,0 +1,40 @@
+<svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <!-- Background circle with gradient -->
+    <defs>
+        <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#1890ff;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#096dd9;stop-opacity:1" />
+        </linearGradient>
+        <linearGradient id="shineGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#40a9ff;stop-opacity:0.6" />
+            <stop offset="100%" style="stop-color:#1890ff;stop-opacity:0" />
+        </linearGradient>
+    </defs>
+    
+    <!-- Main circle background -->
+    <circle cx="28" cy="28" r="26" fill="url(#bgGradient)" stroke="#40a9ff" stroke-width="1.5"/>
+    
+    <!-- Shine effect -->
+    <ellipse cx="20" cy="18" rx="12" ry="8" fill="url(#shineGradient)"/>
+    
+    <!-- Ship/Boat hull - CapRover themed -->
+    <path d="M12 32 L28 38 L44 32 L40 36 C36 40 20 40 16 36 Z" fill="#ffffff"/>
+    
+    <!-- Sail/Captain hat shape -->
+    <path d="M28 12 L28 32 L18 28 Z" fill="#ffffff" opacity="0.95"/>
+    <path d="M28 12 L28 32 L38 28 Z" fill="#e6f7ff" opacity="0.85"/>
+    
+    <!-- Mast -->
+    <rect x="27" y="12" width="2" height="22" fill="#ffffff"/>
+    
+    <!-- Flag -->
+    <path d="M29 12 L38 16 L29 20 Z" fill="#ffc53d"/>
+    
+    <!-- Domain/Globe lines on the sail -->
+    <path d="M22 24 Q25 22 28 24" stroke="#1890ff" stroke-width="1" fill="none" opacity="0.6"/>
+    <path d="M23 27 Q25.5 25.5 28 27" stroke="#1890ff" stroke-width="1" fill="none" opacity="0.6"/>
+    
+    <!-- Water waves -->
+    <path d="M8 42 Q14 39 20 42 Q26 45 32 42 Q38 39 44 42 Q50 45 52 42" stroke="#40a9ff" stroke-width="1.5" fill="none" opacity="0.5"/>
+    <path d="M6 46 Q12 43 18 46 Q24 49 30 46 Q36 43 42 46 Q48 49 54 46" stroke="#40a9ff" stroke-width="1.5" fill="none" opacity="0.3"/>
+</svg>
