@@ -39,7 +39,7 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/caprover-apps-domains-manager.git
+git clone https://github.com/AlmossaidLLC/caprover-apps-domains-manager.git
 cd caprover-apps-domains-manager
 
 # Install dependencies
@@ -56,7 +56,7 @@ The application will be available at `http://localhost:3008`
 ### Pull from GHCR
 
 ```bash
-docker pull ghcr.io/yourusername/caprover-apps-domains-manager:latest
+docker pull ghcr.io/almossaidllc/caprover-apps-domains-manager:latest
 ```
 
 ### Run with Docker
@@ -65,7 +65,7 @@ docker pull ghcr.io/yourusername/caprover-apps-domains-manager:latest
 docker run -d \
   --name caprover-apps-domains-manager \
   -p 3008:3008 \
-  ghcr.io/yourusername/caprover-apps-domains-manager:latest
+  ghcr.io/almossaidllc/caprover-apps-domains-manager:latest
 ```
 
 ### Build Locally
@@ -84,7 +84,7 @@ docker run -d -p 3008:3008 caprover-apps-domains-manager
 version: '3.8'
 services:
   caprover-apps-domains-manager:
-    image: ghcr.io/yourusername/caprover-apps-domains-manager:latest
+    image: ghcr.io/almossaidllc/caprover-apps-domains-manager:latest
     ports:
       - "3008:3008"
     restart: unless-stopped
@@ -98,7 +98,7 @@ services:
 ```json
 {
   "schemaVersion": 2,
-  "imageName": "ghcr.io/yourusername/caprover-apps-domains-manager:latest"
+  "imageName": "ghcr.io/almossaidllc/caprover-apps-domains-manager:latest"
 }
 ```
 
